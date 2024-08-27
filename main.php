@@ -195,6 +195,24 @@ class MAIN
         }
     }
 
+    public function getPets()
+    {
+        try {
+            $sql = "SELECT * , owners.OwnerID FROM `pets` INNER JOIN owners ON pets.OwnerID = owners.OwnerID";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            if ($stmt->rowCount() > 0) {
+                json_encode(array("success" => $stmt->fetchAll(PDO::FETCH_ASSOC)));
+            } else {
+                return json_encode(array("error" => "Nothing here!"));
+            }
+        } catch (Exception $e) {
+            return json_encode(array("error" => $e->getMessage()));
+        } finally {
+            unset($this->conn);
+        }
+    }
+
 
 
 }
@@ -229,6 +247,10 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" || $_SERVER["REQUEST_METHOD"] == "POST")
 
             case "getSpecies":
                 echo $main->getSpecies();
+                break;
+
+            case "getPets":
+                echo $main->getPets();
                 break;
 
             case "getUser":
