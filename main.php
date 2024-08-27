@@ -74,7 +74,7 @@ class MAIN
                 $sql = "INSERT INTO `breeds`(`BreedName`, `SpeciesID`) VALUES (:breedName, :speciesID) ";
                 $stmt = $this->conn->prepare($sql);
                 $stmt->bindParam(":breedName", $breedName, PDO::PARAM_STR);
-                $stmt->bindParam("speciesID", $speciesID);
+                $stmt->bindParam(":speciesID", $speciesID);
 
                 if ($stmt->execute()) {
                     return json_encode(array("success" => "Breedname `" . $breedName . "` is successfully created"));
@@ -195,14 +195,47 @@ class MAIN
         }
     }
 
-    public function getPets()
+    public function getPets($json)
     {
+        $json = json_decode($json, true);
+
         try {
-            $sql = "SELECT * , owners.OwnerID FROM `pets` INNER JOIN owners ON pets.OwnerID = owners.OwnerID";
+            $sql = "SELECT pets.*, owners.OwnerID, owners.Name as OwnerName, species.SpeciesName, breeds.BreedName
+                    FROM pets
+                    INNER JOIN owners ON pets.OwnerID = owners.OwnerID
+                    INNER JOIN species ON pets.SpeciesID = species.SpeciesID
+                    INNER JOIN breeds ON pets.BreedID = breeds.BreedID";
+
+            $conditions = [];
+            $params = [];
+
+            if (isset($json["breed"])) {
+                $conditions[] = "breeds.BreedName = :breed";
+                $params[':breed'] = $json["breed"];
+            }
+
+            if (isset($json["specie"])) {
+                $conditions[] = "species.SpeciesName = :specie";
+                $params[':specie'] = $json["specie"];
+            }
+
+            if (isset($json["owner"])) {
+                $conditions[] = "owners.Name = :owner";
+                $params[':owner'] = $json["owner"];
+            }
+
+            if (count($conditions) > 0) {
+                $sql .= " WHERE " . implode(" AND ", $conditions);
+            }
+
             $stmt = $this->conn->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindParam($key, $value);
+            }
             $stmt->execute();
+
             if ($stmt->rowCount() > 0) {
-                json_encode(array("success" => $stmt->fetchAll(PDO::FETCH_ASSOC)));
+                return json_encode(array("success" => $stmt->fetchAll(PDO::FETCH_ASSOC)));
             } else {
                 return json_encode(array("error" => "Nothing here!"));
             }
@@ -212,7 +245,6 @@ class MAIN
             unset($this->conn);
         }
     }
-
 
 
 }
@@ -250,7 +282,7 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" || $_SERVER["REQUEST_METHOD"] == "POST")
                 break;
 
             case "getPets":
-                echo $main->getPets();
+                echo $main->getPets($json);
                 break;
 
             case "getUser":
