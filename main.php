@@ -246,6 +246,47 @@ class MAIN
         }
     }
 
+    public function getUserProfile($json)
+    {
+        $json = json_decode($json, true);
+
+        if (!isset($json["name"]) || empty($json["name"])) {
+            return json_encode(array("error" => "Name parameter is missing or empty"));
+        }
+
+        try {
+
+            $sql = "SELECT * FROM `owners` WHERE `Name` = :name";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(":name", $json["name"], PDO::PARAM_STR);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $sqlCount = "SELECT COUNT(*) as pet_count FROM `pets` WHERE `OwnerID` = :owner_id";
+                $stmtCount = $this->conn->prepare($sqlCount);
+                $stmtCount->bindParam(":owner_id", $result["OwnerID"], PDO::PARAM_INT);
+                $stmtCount->execute();
+                $petCount = $stmtCount->fetchColumn();
+
+                return json_encode(array(
+                    "success" => array(
+                        "user" => $result,
+                        "pet_count" => $petCount
+                    )
+                ));
+            } else {
+                return json_encode(array("error" => "No such user found"));
+            }
+        } catch (Exception $e) {
+            return json_encode(array("error" => $e->getMessage()));
+        } finally {
+            unset($this->conn);
+        }
+    }
+
+
 
 }
 
@@ -287,6 +328,10 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" || $_SERVER["REQUEST_METHOD"] == "POST")
 
             case "getUser":
                 echo $main->getUser($json);
+                break;
+
+            case "getUserProfile":
+                echo $main->getUserProfile($json);
                 break;
 
             default:
